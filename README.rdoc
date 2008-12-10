@@ -4,7 +4,7 @@
 
 == DESCRIPTION:
 
-Ruby bindings for Strophe, a C library for 
+Ruby bindings for Strophe (http://code.stanziq.com/strophe), a C library for 
 writing XMPP clients. If all you need is a simple XMPP bot that
 react to message and presence notifications, you might be better off
 with XMPPBot, which is an implementation I wrote on top of StropheRuby.
