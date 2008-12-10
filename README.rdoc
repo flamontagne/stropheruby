@@ -38,34 +38,55 @@ def announce_presence
   presence.name="presence"
   presence.set_attribute("show", "available")
   @conn.send(presence)
-  presence.release
 end
 
 def register_callbacks
-  #accept everyone
   @conn.add_handler("presence") do |pres|
 	if pres.type == "subscribe"
+	
+	  #We accept everyone
 	  stanza = StropheRuby::Stanza.new
 	  stanza.name = "presence"
-	  stanza.type = "subscribed"
-	                
+	  stanza.type = "subscribed"	                
+	  stanza.set_attribute("to",pres.attribute("from"))
+	  	  
+	  @conn.send(stanza)
+	  
+	  #Now it's our turn to send a subscription request
+	  stanza = StropheRuby::Stanza.new
+	  stanza.name = "presence"
+	  stanza.type = "subscribe"	                
 	  stanza.set_attribute("to",pres.attribute("from"))
 	  @conn.send(stanza)
-	  stanza.release
+	  
 	 end
   end
 
   #Echo every messages
   @conn.add_handler("message") do |msg|
-	stanza = StropheRuby::Stanza.new
-	stanza.name = "message"
-	stanza.set_attribute("to",msg.attribute("from"))
-	@conn.send(stanza)
-	stanza.release
+	body=msg.child_by_name("body")
+	if body
+		if body.text.to_s == "exit"
+			disconnect
+		else
+			stanza = StropheRuby::Stanza.new
+			stanza.name = "message"
+			stanza.set_attribute("to",msg.attribute("from"))
+
+		    body_stanza = StropheRuby::Stanza.new
+		    body_stanza.name="body"
+
+		    text_stanza = StropheRuby::Stanza.new
+		    text_stanza.text="I'm very happy for you"
+
+		    body_stanza.add_child(text_stanza)    
+		    stanza.add_child(body_stanza)
+
+			@conn.send(stanza)
+		end
+	end
   end
 end
-
-
 
 StropheRuby::EventLoop.prepare
 
@@ -79,29 +100,23 @@ StropheRuby::EventLoop.prepare
   if status == StropheRuby::ConnectionEvents::CONNECT
     announce_presence
     register_callbacks
+  else
+	StropheRuby::EventLoop.stop(@ctx)  
   end
 end
 
-#FIXME: EventLoop#run works fine but for some reason we cannot terminate 
-the program with CTRL-C
-#when we use it
-#StropheRuby::EventLoop.run(@ctx)
-
-
-#so... for now we have to do a manual loop by calling run_once
-return if @ctx.loop_status != 0
-@ctx.loop_status = 1        
-while (@ctx.loop_status == 1) do 
-    StropheRuby::EventLoop.run_once(@ctx, 1)
+def disconnect
+	StropheRuby::EventLoop.stop(@ctx)
 end
 
 
-#Once it's over, we can close everything
-StropheRuby::EventLoop.stop(@ctx)
-@conn.release
-@ctx.free
-StropheRuby::EventLoop.shutdown        
+#This is a blocking call
+StropheRuby::EventLoop.run(@ctx)
 
+#Once the loop has exit, we can shutdown strophe
+StropheRuby::EventLoop.shutdown
+puts "Program has ended normally"
+exit
 
 == REQUIREMENTS:
 
