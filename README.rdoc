@@ -1,0 +1,116 @@
+= strophe_ruby
+
+* http://stropheruby.rubyforge.org
+
+== DESCRIPTION:
+
+Ruby bindings for Strophe, a C library for 
+writing XMPP clients.
+
+IMPORTANT : This gem is quite experimental currently... it is not ready 
+for production!
+
+Strophe (http://code.stanziq.com/strophe/), is a robust and well written 
+C library that allows the developer to implement XMPP clients.
+
+I wanted to be able to use the power of this library with the ruby 
+syntax. I didn't use SWIG to generate the bindings for 2 reasons :
+
+1. I wanted to learn how to write a C extension for ruby
+2. I didn't like how SWIG generate gazilions of lines of code
+
+My other project, XMPPBot, is an implementation of Strophe Ruby that 
+allows the ruby developer to write a XMPP bot in a few lines of code.
+License: GNU General Public License (GPL)
+
+The RubyForge admin team will now examine your project submission.  You 
+will be notified of their decision.
+
+== FEATURES/PROBLEMS:
+
+- Currently no Support for TLS with OpenSSL
+
+== SYNOPSIS:
+
+StropheRuby::EventLoop.prepare
+
+ctx = StropheRuby::Context.new(StropheRuby::Logging::DEBUG)
+conn = @conn =  StropheRuby::Connection.new(ctx)
+
+conn.jid = "bot@example.com"
+conn.pass = "secret"
+
+conn.connect do |status|
+  if status == StropheRuby::ConnectionEvents::CONNECT
+    announce_presence
+    register_callbacks
+  end
+end
+EventLoop.run(@ctx)
+
+... 
+def announce_presence
+  presence = StropheRuby::Stanza.new
+  presence.name="presence"
+  presence.set_attribute("show", "available")
+  @conn.send(presence)
+  presence.release
+end
+
+def register_callbacks
+  #accept everyone
+  @conn.add_handler("presence") do |pres|
+    if pres.type == "subscribe"
+      stanza = StropheRuby::Stanza.new
+      stanza.name = "presence"
+      stanza.type = "subscribed"
+                    
+      stanza.set_attribute("to",pres.attribute("from"))
+      @conn.send(stanza)
+      stanza.release
+     end
+  end
+
+  #Echo every messages
+  @conn.add_handler("message") do |msg|
+    stanza = StropheRuby::Stanza.new
+    stanza.name = "message"
+    stanza.set_attribute("to",msg.attribute("from"))
+    @conn.send(stanza)
+    stanza.release
+  end
+
+end
+
+== REQUIREMENTS:
+
+* FIX (list of requirements)
+
+== INSTALL:
+
+* FIX (sudo gem install, anything else)
+
+== LICENSE:
+
+(The MIT License)
+
+Copyright (c) 2008 François Lamontagne
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
