@@ -5,7 +5,10 @@
 == DESCRIPTION:
 
 Ruby bindings for Strophe, a C library for 
-writing XMPP clients.
+writing XMPP clients. If all you need is a simple XMPP bot that
+react to message and presence notifications, you might be better off
+with XMPPBot, which is an implementation I wrote on top of StropheRuby.
+This project is NOT on RubyForge or github yet. 
 
 IMPORTANT : This gem is quite experimental currently... it is not ready 
 for production!
@@ -21,6 +24,7 @@ syntax. I didn't use SWIG to generate the bindings for 2 reasons :
 
 My other project, XMPPBot, is an implementation of Strophe Ruby that 
 allows the ruby developer to write a XMPP bot in a few lines of code.
+
 License: GNU General Public License (GPL)
 
 The RubyForge admin team will now examine your project submission.  You 
