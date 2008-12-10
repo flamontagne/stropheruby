@@ -81,7 +81,27 @@ StropheRuby::EventLoop.prepare
     register_callbacks
   end
 end
-StropheRuby::EventLoop.run(@ctx)
+
+#FIXME: EventLoop#run works fine but for some reason we cannot terminate 
+the program with CTRL-C
+#when we use it
+#StropheRuby::EventLoop.run(@ctx)
+
+
+#so... for now we have to do a manual loop by calling run_once
+return if @ctx.loop_status != 0
+@ctx.loop_status = 1        
+while (@ctx.loop_status == 1) do 
+    StropheRuby::EventLoop.run_once(@ctx, 1)
+end
+
+
+#Once it's over, we can close everything
+StropheRuby::EventLoop.stop(@ctx)
+@conn.release
+@ctx.free
+StropheRuby::EventLoop.shutdown        
+
 
 == REQUIREMENTS:
 
