@@ -28,27 +28,11 @@ will be notified of their decision.
 
 == FEATURES/PROBLEMS:
 
-- Currently no Support for TLS with OpenSSL
+- Currently no Support for TLS
 
 == SYNOPSIS:
 
-StropheRuby::EventLoop.prepare
-
-ctx = StropheRuby::Context.new(StropheRuby::Logging::DEBUG)
-conn = @conn =  StropheRuby::Connection.new(ctx)
-
-conn.jid = "bot@example.com"
-conn.pass = "secret"
-
-conn.connect do |status|
-  if status == StropheRuby::ConnectionEvents::CONNECT
-    announce_presence
-    register_callbacks
-  end
-end
-EventLoop.run(@ctx)
-
-... 
+require 'strophe_ruby'
 def announce_presence
   presence = StropheRuby::Stanza.new
   presence.name="presence"
@@ -60,35 +44,52 @@ end
 def register_callbacks
   #accept everyone
   @conn.add_handler("presence") do |pres|
-    if pres.type == "subscribe"
-      stanza = StropheRuby::Stanza.new
-      stanza.name = "presence"
-      stanza.type = "subscribed"
-                    
-      stanza.set_attribute("to",pres.attribute("from"))
-      @conn.send(stanza)
-      stanza.release
-     end
+	if pres.type == "subscribe"
+	  stanza = StropheRuby::Stanza.new
+	  stanza.name = "presence"
+	  stanza.type = "subscribed"
+	                
+	  stanza.set_attribute("to",pres.attribute("from"))
+	  @conn.send(stanza)
+	  stanza.release
+	 end
   end
 
   #Echo every messages
   @conn.add_handler("message") do |msg|
-    stanza = StropheRuby::Stanza.new
-    stanza.name = "message"
-    stanza.set_attribute("to",msg.attribute("from"))
-    @conn.send(stanza)
-    stanza.release
+	stanza = StropheRuby::Stanza.new
+	stanza.name = "message"
+	stanza.set_attribute("to",msg.attribute("from"))
+	@conn.send(stanza)
+	stanza.release
   end
-
 end
+
+
+
+StropheRuby::EventLoop.prepare
+
+@ctx = StropheRuby::Context.new(StropheRuby::Logging::DEBUG)
+@conn =  StropheRuby::Connection.new(@ctx)
+
+@conn.jid = "bot@example.com"
+@conn.password = "secret"
+
+@conn.connect do |status|
+  if status == StropheRuby::ConnectionEvents::CONNECT
+    announce_presence
+    register_callbacks
+  end
+end
+StropheRuby::EventLoop.run(@ctx)
 
 == REQUIREMENTS:
 
-* FIX (list of requirements)
+* Coming soon...
 
 == INSTALL:
 
-* FIX (sudo gem install, anything else)
+* Coming soon...
 
 == LICENSE:
 
