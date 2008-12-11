@@ -7,14 +7,12 @@ Rakefile
 ext/strophe_ruby/extconf.rb
 ext/strophe_ruby/libexpat.a
 ext/strophe_ruby/libstrophe.a
-ext/strophe_ruby/mkmf.log
 ext/strophe_ruby/strophe.h
 ext/strophe_ruby/strophe/common.h
 ext/strophe_ruby/strophe/hash.h
 ext/strophe_ruby/strophe/sock.h
 ext/strophe_ruby/strophe/tls.h
 ext/strophe_ruby/strophe_ruby.c
-ext/strophe_ruby/strophe_ruby.o
 lib/strophe_ruby.rb
 script/console
 script/destroy
