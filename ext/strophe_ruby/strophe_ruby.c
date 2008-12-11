@@ -13,26 +13,30 @@ VALUE cEventLoop;
 VALUE client_conn_handler;
 VALUE cStanza;
 
+/* release the stanza. Called automatically by the GC */
 static void t_xmpp_stanza_release(xmpp_stanza_t *stanza) {
     xmpp_stanza_release(stanza);
 }
 
-
+/* Initialize the strophe library */
 VALUE t_xmpp_initialize(VALUE self) {
     xmpp_initialize();
     return Qnil;
 }
 
+/* shutdown the library */
 VALUE t_xmpp_shutdown(VALUE self) {
     xmpp_shutdown();
     return Qnil;
 }
 
+/* check Strophe version */
 VALUE t_xmpp_version_check(VALUE self, VALUE major, VALUE minor) {
     int res = xmpp_version_check(FIX2INT(major), FIX2INT(minor));
     return INT2FIX(res);
 }
 
+/* parse the stream one time */
 VALUE t_xmpp_run_once(VALUE self, VALUE rb_ctx, VALUE timeout) {
     xmpp_ctx_t *ctx;        
     Data_Get_Struct(rb_ctx,xmpp_ctx_t,ctx);
@@ -40,6 +44,7 @@ VALUE t_xmpp_run_once(VALUE self, VALUE rb_ctx, VALUE timeout) {
     return Qtrue;        
 }
 
+/* parse the stream continuously (by calling xmpp_run_once in a while loop) */
 VALUE t_xmpp_run(VALUE self, VALUE rb_ctx) {
     xmpp_ctx_t *ctx;
     Data_Get_Struct(rb_ctx,xmpp_ctx_t,ctx);	
@@ -47,6 +52,7 @@ VALUE t_xmpp_run(VALUE self, VALUE rb_ctx) {
     return Qtrue;
 }
 
+/* Set a flag to indicate to our event loop that it must exit */
 VALUE t_xmpp_stop(VALUE self, VALUE rb_ctx) {
     xmpp_ctx_t *ctx;
     Data_Get_Struct(rb_ctx, xmpp_ctx_t, ctx);
@@ -54,17 +60,22 @@ VALUE t_xmpp_stop(VALUE self, VALUE rb_ctx) {
     return Qtrue;
 }
 
-/*contexts*/
+/* free the context object (called by the GC) */
 static void t_xmpp_ctx_free(xmpp_ctx_t *ctx) {
 	xmpp_ctx_free(ctx);
 }
 
+/* Get the status of the control loop
+ TODO: Define ruby constants for the loop statuses. Currently we have to know them by heart (0 = NOTSTARTED, 1 = RUNNING, 2 = QUIT) 
+*/
 static VALUE t_xmpp_get_loop_status(VALUE self) {
 	xmpp_ctx_t *ctx;
 	Data_Get_Struct(self, xmpp_ctx_t, ctx);
 	return INT2FIX(ctx->loop_status);
 }
 
+/* Set the loop status. Don't call this method if you want to exit the control loop. Call xmpp_stop instead. This method
+will set the loop status at QUIT */
 static VALUE t_xmpp_set_loop_status(VALUE self, VALUE rb_loop_status) {
 	xmpp_ctx_t *ctx;
 	Data_Get_Struct(self, xmpp_ctx_t, ctx);
@@ -72,6 +83,7 @@ static VALUE t_xmpp_set_loop_status(VALUE self, VALUE rb_loop_status) {
 	return rb_loop_status;
 }
 
+/* Initialize a run time context */
 VALUE t_xmpp_ctx_new(VALUE class, VALUE log_level) {
     xmpp_log_t *log;
     xmpp_log_level_t level;
@@ -85,18 +97,22 @@ VALUE t_xmpp_ctx_new(VALUE class, VALUE log_level) {
     return tdata;
 }
 
+/* Ruby initialize for the context. Hmm... do we really need this? */
 static VALUE t_xmpp_ctx_init(VALUE self, VALUE log_level) {
   rb_iv_set(self, "@log_level", log_level);
   return self;
 }
 
-/*Connection*/
-
+/* Release the connection object. (called by GC) */
 static void t_xmpp_conn_release(xmpp_conn_t *conn) {    
     xmpp_conn_release(conn);
 }
 
 
+/* Initialize a connection object. We register instance variables that will hold the various callbacks
+   You should not manipulate instance variables. Use add_handler instead. 
+   Maybe put this into xmpp_conn_new?
+ */
 static VALUE t_xmpp_conn_init(VALUE self, VALUE ctx) {
   rb_iv_set(self, "@ctx", ctx);  
   rb_iv_set(self, "@presence_handlers", rb_ary_new());
@@ -107,6 +123,7 @@ static VALUE t_xmpp_conn_init(VALUE self, VALUE ctx) {
   return self;
 }
 
+/* create a connection object then call the initialize method for it*/
 VALUE t_xmpp_conn_new(VALUE class, VALUE rb_ctx) {
   //Get the context in a format that C can understand
   xmpp_ctx_t *ctx;
@@ -122,18 +139,21 @@ VALUE t_xmpp_conn_new(VALUE class, VALUE rb_ctx) {
   return tdata;
 }
 
+/* Clone a connection */
 static VALUE t_xmpp_conn_clone(VALUE self) {
     xmpp_conn_t *conn = xmpp_conn_clone((xmpp_conn_t *)self);    
     return Data_Wrap_Struct(cConnection, 0, t_xmpp_conn_release, conn);
 }
 
 
+/* Get the jid */
 static VALUE t_xmpp_conn_get_jid(VALUE self) {
     xmpp_conn_t *conn;
     Data_Get_Struct(self, xmpp_conn_t, conn);
     return rb_str_new2(xmpp_conn_get_jid(conn));    
 }
 
+/* Set the jid */
 static VALUE t_xmpp_conn_set_jid(VALUE self, VALUE jid) {
     xmpp_conn_t *conn;
     Data_Get_Struct(self, xmpp_conn_t, conn);
@@ -141,12 +161,14 @@ static VALUE t_xmpp_conn_set_jid(VALUE self, VALUE jid) {
     return jid;
 }
 
+/* get the password */
 static VALUE t_xmpp_conn_get_pass(VALUE self) {
     xmpp_conn_t *conn;
     Data_Get_Struct(self, xmpp_conn_t, conn);
     return rb_str_new2(xmpp_conn_get_pass(conn));
 }
 
+/* set the password */
 static VALUE t_xmpp_conn_set_pass(VALUE self, VALUE pass) {
     xmpp_conn_t *conn;
     Data_Get_Struct(self, xmpp_conn_t, conn);
@@ -154,8 +176,6 @@ static VALUE t_xmpp_conn_set_pass(VALUE self, VALUE pass) {
     return pass;
 }
 
-
-/* Handlers */
     
 /* Parent handler for the connection... we call yield to invoke the client callback*/
 static void _conn_handler(xmpp_conn_t * const conn, const xmpp_conn_event_t status, 
@@ -175,11 +195,13 @@ static void _conn_handler(xmpp_conn_t * const conn, const xmpp_conn_event_t stat
     }    
 }
 
+/*this is called in a loop (rb_iterate). We invoke the block passed by the user*/
 static VALUE _call_handler(VALUE obj, VALUE stanza) {
     rb_funcall(obj, rb_intern("call"),1, stanza);
     return Qnil;
 }
 
+/* Called when a message is received in the stream. From there we invoke all code blocks for stanzas of type 'message'*/
 int _message_handler(xmpp_conn_t * const conn,
 		 xmpp_stanza_t * const stanza,
 		 void * const userdata) {    
@@ -193,6 +215,7 @@ int _message_handler(xmpp_conn_t * const conn,
     return 1;
 }
 
+/* Called when a presence is received in the stream. From there we invoke all code blocks for stanzas of type 'presence'*/
 int _presence_handler(xmpp_conn_t * const conn,
 		 xmpp_stanza_t * const stanza,
 		 void * const userdata) {
@@ -206,6 +229,7 @@ int _presence_handler(xmpp_conn_t * const conn,
     return 1;
 }
 
+/* Called when a iq is received in the stream. From there we invoke all code blocks for stanzas of type 'iq'*/
 int _iq_handler(xmpp_conn_t * const conn,
 		 xmpp_stanza_t * const stanza,
 		 void * const userdata) {
@@ -219,6 +243,7 @@ int _iq_handler(xmpp_conn_t * const conn,
     return 1;
 }
 
+/* Called when a id stanza is received TODO: Test this!*/
 int _id_handler(xmpp_conn_t * const conn,
 		 xmpp_stanza_t * const stanza,
 		 void * const userdata) {
@@ -233,6 +258,8 @@ int _id_handler(xmpp_conn_t * const conn,
 }
 
 
+/* Add an handler for events in the stream (message, presence or iqs), We store the block we just received in the correct instance variable
+ to invoke it later*/
 static VALUE t_xmpp_handler_add(VALUE self,VALUE rb_name) {    
     xmpp_conn_t *conn;
     Data_Get_Struct(self, xmpp_conn_t, conn);    
@@ -258,7 +285,7 @@ static VALUE t_xmpp_handler_add(VALUE self,VALUE rb_name) {
     return Qnil;
 }
 
-
+/* Add an handler for ID stanzas. TODO:Test this!*/
 static VALUE t_xmpp_id_handler_add(VALUE self, VALUE rb_id) {
     xmpp_conn_t *conn;
     Data_Get_Struct(self, xmpp_conn_t, conn);    
@@ -271,6 +298,7 @@ static VALUE t_xmpp_id_handler_add(VALUE self, VALUE rb_id) {
     return Qnil;
 }
 
+/* Connect and authenticate. We store the block in the client_conn_handler variable to invoke it later*/
 static VALUE t_xmpp_connect_client(VALUE self) {
     xmpp_conn_t *conn;
     xmpp_ctx_t *ctx;
@@ -286,6 +314,7 @@ static VALUE t_xmpp_connect_client(VALUE self) {
     return INT2FIX(result);
 }
 
+/* Disconnect from the stream. Is it needed? Not too sure about it. Normally if you just call xmpp_stop you should be fine*/
 static VALUE t_xmpp_disconnect(VALUE self) {
     xmpp_conn_t *conn;
     Data_Get_Struct(self, xmpp_conn_t, conn);
@@ -293,6 +322,7 @@ static VALUE t_xmpp_disconnect(VALUE self) {
     return Qtrue;
 }
 
+/* Send a stanza in the stream */
 static VALUE t_xmpp_send(VALUE self, VALUE rb_stanza) {
 
     xmpp_conn_t *conn;
@@ -305,8 +335,7 @@ static VALUE t_xmpp_send(VALUE self, VALUE rb_stanza) {
     return Qtrue;
 }
     
-/* Stanzas */
-
+/* Create a new stanza */
 VALUE t_xmpp_stanza_new(VALUE class) {
   //Get the context in a format that C can understand
   xmpp_ctx_t *ctx;
@@ -317,6 +346,7 @@ VALUE t_xmpp_stanza_new(VALUE class) {
   VALUE tdata = Data_Wrap_Struct(class, 0, t_xmpp_stanza_release, stanza);
 }
 
+/*Clone a stanza. TODO: Test this!*/
 static VALUE t_xmpp_stanza_clone(VALUE self) {
     xmpp_stanza_t *stanza;
     xmpp_stanza_t *new_stanza;
@@ -326,6 +356,7 @@ static VALUE t_xmpp_stanza_clone(VALUE self) {
     return tdata;
 }
 
+/*Copy a stanza. TODO: Test this!*/
 static VALUE t_xmpp_stanza_copy(VALUE self) {
     xmpp_stanza_t *stanza;
     xmpp_stanza_t *new_stanza;
@@ -336,6 +367,8 @@ static VALUE t_xmpp_stanza_copy(VALUE self) {
 }
 
 
+/*Get the children of the stanza. For example, message stanzas have a "body" child that contains another stanza that contains the actual
+message. If you have the top level stanza you can do something like : body_stanza = message_stanza.children */
 static VALUE t_xmpp_stanza_get_children(VALUE self) {
     xmpp_stanza_t *stanza;
     xmpp_stanza_t *children;
@@ -350,6 +383,7 @@ static VALUE t_xmpp_stanza_get_children(VALUE self) {
 	return Qnil;
 }
 
+/*Get the child of a stanza by its name. eg. body_stanza = message_stanza.child_by_name("body")*/
 static VALUE t_xmpp_stanza_get_child_by_name(VALUE self, VALUE rb_name) {
     xmpp_stanza_t *stanza;
     xmpp_stanza_t *child;
@@ -366,6 +400,7 @@ static VALUE t_xmpp_stanza_get_child_by_name(VALUE self, VALUE rb_name) {
     }
 }
 
+/*TODO: Test this!*/
 static VALUE t_xmpp_stanza_get_next(VALUE self) {
     xmpp_stanza_t *stanza;
     xmpp_stanza_t *next;
@@ -377,6 +412,7 @@ static VALUE t_xmpp_stanza_get_next(VALUE self) {
     return tdata;
 }
 
+/*Get the attribute of a stanza. eg. message_stanza.child_by_name("body").text*/
 static VALUE t_xmpp_stanza_get_attribute(VALUE self, VALUE rb_attribute) {
     xmpp_stanza_t *stanza;    
     Data_Get_Struct(self, xmpp_stanza_t, stanza);
@@ -385,6 +421,7 @@ static VALUE t_xmpp_stanza_get_attribute(VALUE self, VALUE rb_attribute) {
     return rb_str_new2(val);
 }
 
+/*Get the namespace of a stanza TODO: Test this!*/
 static VALUE t_xmpp_stanza_get_ns(VALUE self) {
     xmpp_stanza_t *stanza;    
     Data_Get_Struct(self, xmpp_stanza_t, stanza);
@@ -393,6 +430,7 @@ static VALUE t_xmpp_stanza_get_ns(VALUE self) {
     return rb_str_new2(ns);
 }
 
+/*Get the text of a stanza. */
 static VALUE t_xmpp_stanza_get_text(VALUE self) {
     xmpp_stanza_t *stanza;    
     Data_Get_Struct(self, xmpp_stanza_t, stanza);
@@ -405,6 +443,7 @@ static VALUE t_xmpp_stanza_get_text(VALUE self) {
 	return rb_str_new2("");
 }
 
+/*Get the name of a stanza (message, presence, iq) */
 static VALUE t_xmpp_stanza_get_name(VALUE self) {
     xmpp_stanza_t *stanza;    
     Data_Get_Struct(self, xmpp_stanza_t, stanza);
@@ -413,6 +452,7 @@ static VALUE t_xmpp_stanza_get_name(VALUE self) {
     return rb_str_new2(name);
 }
 
+/*Get the type of a stanza. For example, if the name is 'message', type can be 'chat', 'normal' and so on */
 static VALUE t_xmpp_stanza_get_type(VALUE self) {
     xmpp_stanza_t *stanza;    
     Data_Get_Struct(self, xmpp_stanza_t, stanza);
@@ -425,6 +465,7 @@ static VALUE t_xmpp_stanza_get_type(VALUE self) {
 	return Qnil;
 }
 
+/*Get the id of a stanza. TODO:Test this!*/
 static VALUE t_xmpp_stanza_get_id(VALUE self) {
     xmpp_stanza_t *stanza;    
     Data_Get_Struct(self, xmpp_stanza_t, stanza);
@@ -433,9 +474,7 @@ static VALUE t_xmpp_stanza_get_id(VALUE self) {
     return rb_str_new2(id);
 }
 
-
-
-
+/*Set the value of a stanza attribute (eg. stanza.set_attribute("to","johnsmith@example.com") */
 static VALUE t_xmpp_stanza_set_attribute(VALUE self, VALUE rb_attribute, VALUE rb_val) {
     xmpp_stanza_t *stanza;    
     Data_Get_Struct(self, xmpp_stanza_t, stanza);
@@ -447,6 +486,7 @@ static VALUE t_xmpp_stanza_set_attribute(VALUE self, VALUE rb_attribute, VALUE r
     return Qtrue;
 }
 
+/*Set the namespace of a stanza. TODO:Test this!*/
 static VALUE t_xmpp_stanza_set_ns(VALUE self, VALUE rb_ns) {
     xmpp_stanza_t *stanza;    
     Data_Get_Struct(self, xmpp_stanza_t, stanza);
@@ -457,6 +497,7 @@ static VALUE t_xmpp_stanza_set_ns(VALUE self, VALUE rb_ns) {
     return Qtrue;
 }
 
+/*Set the text of a stanza */
 static VALUE t_xmpp_stanza_set_text(VALUE self, VALUE rb_text) {
     xmpp_stanza_t *stanza;    
     Data_Get_Struct(self, xmpp_stanza_t, stanza);
@@ -467,6 +508,7 @@ static VALUE t_xmpp_stanza_set_text(VALUE self, VALUE rb_text) {
     return rb_text;    
 }
 
+/*Set the name of a stanza (message, presence, iq) */
 static VALUE t_xmpp_stanza_set_name(VALUE self, VALUE rb_name) {
     xmpp_stanza_t *stanza;    
     Data_Get_Struct(self, xmpp_stanza_t, stanza);
@@ -477,6 +519,7 @@ static VALUE t_xmpp_stanza_set_name(VALUE self, VALUE rb_name) {
     return Qtrue;
 }
 
+/*Set the type of a stanza. For example if the name is 'message', the type can be 'chat', 'normal' and so on*/
 static VALUE t_xmpp_stanza_set_type(VALUE self, VALUE rb_type) {
     xmpp_stanza_t *stanza;    
     Data_Get_Struct(self, xmpp_stanza_t, stanza);
@@ -487,6 +530,7 @@ static VALUE t_xmpp_stanza_set_type(VALUE self, VALUE rb_type) {
     return Qtrue;
 }
 
+/*Set the id of a stanza. TODO:Test this!*/
 static VALUE t_xmpp_stanza_set_id(VALUE self, VALUE rb_id) {
     xmpp_stanza_t *stanza;    
     Data_Get_Struct(self, xmpp_stanza_t, stanza);
@@ -497,6 +541,7 @@ static VALUE t_xmpp_stanza_set_id(VALUE self, VALUE rb_id) {
     return Qtrue;
 }
 
+/*Add a child element to a stanza (hint: message stanzas have a body element...)  */
 static VALUE t_xmpp_stanza_add_child(VALUE self, VALUE rb_child) {
     xmpp_stanza_t *stanza;    
     Data_Get_Struct(self, xmpp_stanza_t, stanza);
