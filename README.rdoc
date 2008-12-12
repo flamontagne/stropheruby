@@ -1,6 +1,6 @@
 = strophe_ruby
 
-* http://stropheruby.rubyforge.org
+http://stropheruby.rubyforge.org
 
 == DESCRIPTION:
 
@@ -24,8 +24,6 @@ syntax. I didn't use SWIG to generate the bindings for 2 reasons :
 My other project, XMPPBot, is an implementation of Strophe Ruby that 
 allows the ruby developer to write a XMPP bot in a few lines of code.
 
-License: GNU General Public License (GPL)
-
 == CURRENT PROBLEMS:
 
 - Currently no Support for TLS encryption (Coming soon as it's rather important)
@@ -33,103 +31,95 @@ License: GNU General Public License (GPL)
 - Socket disconnects after being inactive for too long
 - Cannot output log data in a file
 
-== SYNOPSIS:
+
+== EXAMPLE OF USE
 
 require 'strophe_ruby'
+
 def announce_presence
-  presence = StropheRuby::Stanza.new
-  presence.name="presence"
-  presence.set_attribute("show", "available")
-  @conn.send(presence)
+  stanza = StropheRuby::Stanza.new
+  stanza.name = "presence"
+  @conn.send(stanza)
 end
 
 def register_callbacks
+  #Accept all subscriptions
   @conn.add_handler("presence") do |pres|
     if pres.type == "subscribe"
+      #we accept
+      p = StropheRuby::Stanza.new
+      p.name = "presence"
+      p.type = "subscribed"
+      p.set_attribute("to",pres.attribute("from"))
+      @conn.send(p)
 
-      #We accept everyone
-      stanza = StropheRuby::Stanza.new
-      stanza.name = "presence"
-      stanza.type = "subscribed"	                
-      stanza.set_attribute("to",pres.attribute("from"))
-
-      @conn.send(stanza)
-
-      #Now it's our turn to send a subscription request
-      stanza = StropheRuby::Stanza.new
-      stanza.name = "presence"
-      stanza.type = "subscribe"	                
-      stanza.set_attribute("to",pres.attribute("from"))
-      @conn.send(stanza)
+      #then it's our turn to send our subscription request
+      p = StropheRuby::Stanza.new
+      p.name = "presence"
+      p.type = "subscribe"
+      p.set_attribute("to",pres.attribute("from"))
+      @conn.send(p)    
     end
   end
-
-  #Echo every messages
+  
+  #simple echo for messages
   @conn.add_handler("message") do |msg|
-    body=msg.child_by_name("body")
-    if body
-      if body.text.to_s == "exit"
-        disconnect
-      else
-        stanza = StropheRuby::Stanza.new
-        stanza.name = "message"
-        stanza.set_attribute("to",msg.attribute("from"))
-
-        body_stanza = StropheRuby::Stanza.new
-        body_stanza.name="body"
-        
-        text_stanza = StropheRuby::Stanza.new
-        text_stanza.text="I'm very happy for you"
-        
-        body_stanza.add_child(text_stanza)    
-        stanza.add_child(body_stanza)
-
-        @conn.send(stanza)
-      end
+  
+    if msg.child_by_name("body")
+      top_stanza = StropheRuby::Stanza.new
+      top_stanza.name="message"
+      top_stanza.type="chat"
+      top_stanza.set_attribute("to", msg.attribute("from"))
+      
+      body_stanza = StropheRuby::Stanza.new
+      body_stanza.name="body"
+      
+      text_stanza = StropheRuby::Stanza.new
+      text_stanza.text = msg.child_by_name("body").text
+      
+      body_stanza.add_child(text_stanza)
+      top_stanza.add_child(body_stanza)
+      @conn.send(top_stanza)
     end
   end
 end
 
-def disconnect
-  StropheRuby::EventLoop.stop(@ctx)
-end
 
+#Prepare the strophe library
 StropheRuby::EventLoop.prepare
 
-@ctx = StropheRuby::Context.new(StropheRuby::Logging::DEBUG)
-@conn =  StropheRuby::Connection.new(@ctx)
+#create the runtime context and specify the logging level (WARN,INFO,ERROR or DEBUG)
+@ctx=StropheRuby::Context.new(StropheRuby::Logging::DEBUG)
 
-@conn.jid = "bot@example.com"
-@conn.password = "secret"
+#create the connection passing it the context
+@conn=StropheRuby::Connection.new(@ctx)
 
+#set the jid and password
+@conn.jid = 'bot@example.com'
+@conn.password = 'secret'
+
+#Try to connect
 @conn.connect do |status|
   if status == StropheRuby::ConnectionEvents::CONNECT
+    #We are connected.
     announce_presence
     register_callbacks
   else
-    StropheRuby::EventLoop.stop(@ctx)  
+    @conn.disconnect
   end
 end
 
-#This is a blocking call
+
+#Start the event loop
 StropheRuby::EventLoop.run(@ctx)
 
-#Once the loop has exit, we can shutdown strophe
-StropheRuby::EventLoop.shutdown
-puts "Program has ended normally"
-exit
-
-== REQUIREMENTS:
-
-* Coming soon...
+puts 'Disconnected'
 
 == INSTALL:
 
-* Coming soon...
+gem install strophe_ruby
 
 == LICENSE:
-
-(The MIT License)
 
 Copyright (c) 2008 François Lamontagne
 

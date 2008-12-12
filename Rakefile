@@ -3,7 +3,7 @@
 
 # Generate all the Rake tasks
 # Run 'rake -T' to see list of generated tasks (from gem root directory)
-$hoe = Hoe.new('strophe_ruby', '0.0.3') do |p|
+$hoe = Hoe.new('strophe_ruby', '0.0.4') do |p|
   p.developer('François Lamontagne', 'flamontagne@gmail.com')
   p.changes              = p.paragraphs_of("History.txt", 0..1).join("\n\n")
   p.rubyforge_name       = p.name # TODO this is default value
