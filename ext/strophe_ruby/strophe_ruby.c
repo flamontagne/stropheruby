@@ -14,8 +14,9 @@ VALUE client_conn_handler;
 VALUE cStanza;
 
 /* release the stanza. Called automatically by the GC */
-static void t_xmpp_stanza_release(xmpp_stanza_t *stanza) {
-    xmpp_stanza_release(stanza);
+static void t_xmpp_stanza_release(void *stanza) {
+    if(stanza != NULL)
+      xmpp_stanza_release(stanza);    
 }
 
 /* Initialize the strophe library */
@@ -60,9 +61,11 @@ VALUE t_xmpp_stop(VALUE self, VALUE rb_ctx) {
     return Qtrue;
 }
 
-/* free the context object (called by the GC) */
-static void t_xmpp_ctx_free(xmpp_ctx_t *ctx) {
-	xmpp_ctx_free(ctx);
+/* free the context object (because it causes segmentation error once in a while) */
+static VALUE t_xmpp_ctx_free(VALUE self) {
+  xmpp_ctx_t *ctx;
+  Data_Get_Struct(self,xmpp_ctx_t,ctx);
+  xmpp_ctx_free(ctx);
 }
 
 /* Get the status of the control loop
@@ -90,7 +93,7 @@ VALUE t_xmpp_ctx_new(VALUE class, VALUE log_level) {
     level=FIX2INT(log_level);
     log = xmpp_get_default_logger((xmpp_log_level_t)level);
     xmpp_ctx_t *ctx = xmpp_ctx_new(NULL, log);
-    VALUE tdata = Data_Wrap_Struct(class, 0, t_xmpp_ctx_free, ctx);
+    VALUE tdata = Data_Wrap_Struct(class, 0, free, ctx);
     VALUE argv[1];
     argv[0] = log_level;
     rb_obj_call_init(tdata,1,argv);
@@ -103,11 +106,12 @@ static VALUE t_xmpp_ctx_init(VALUE self, VALUE log_level) {
   return self;
 }
 
-/* Release the connection object. (called by GC) */
-static void t_xmpp_conn_release(xmpp_conn_t *conn) {    
-    xmpp_conn_release(conn);
+/* Release the connection object. (Currently not called at all... because it causes segmentation error once in a while) */
+static VALUE t_xmpp_conn_release(VALUE self) {
+  xmpp_conn_t *conn;
+  Data_Get_Struct(self,xmpp_conn_t,conn);
+  xmpp_conn_release(conn);
 }
-
 
 /* Initialize a connection object. We register instance variables that will hold the various callbacks
    You should not manipulate instance variables. Use add_handler instead. 
@@ -130,7 +134,7 @@ VALUE t_xmpp_conn_new(VALUE class, VALUE rb_ctx) {
   Data_Get_Struct(rb_ctx, xmpp_ctx_t, ctx);
   
   xmpp_conn_t *conn = xmpp_conn_new(ctx);
-  VALUE tdata = Data_Wrap_Struct(class, 0, t_xmpp_conn_release, conn);
+  VALUE tdata = Data_Wrap_Struct(class, 0, free, conn);
   VALUE argv[1];
   argv[0] = rb_ctx;
   
@@ -613,7 +617,7 @@ void Init_strophe_ruby() {
     cContext = rb_define_class_under(mStropheRuby, "Context", rb_cObject);
     rb_define_singleton_method(cContext, "new", t_xmpp_ctx_new, 1);
     rb_define_method(cContext, "initialize", t_xmpp_ctx_init, 1);    
-    //rb_define_method(cContext, "free", t_xmpp_ctx_free, 0);
+    rb_define_method(cContext, "free", t_xmpp_ctx_free, 0);
     rb_define_method(cContext, "loop_status", t_xmpp_get_loop_status, 0);
     rb_define_method(cContext, "loop_status=", t_xmpp_set_loop_status, 1);
     
@@ -622,7 +626,7 @@ void Init_strophe_ruby() {
     rb_define_singleton_method(cConnection, "new", t_xmpp_conn_new, 1);
     rb_define_method(cConnection, "initialize", t_xmpp_conn_init, 1);
     rb_define_method(cConnection, "clone", t_xmpp_conn_clone, 1);
-    //rb_define_method(cConnection, "release", t_xmpp_conn_release, 0);
+    rb_define_method(cConnection, "release", t_xmpp_conn_release, 0);
     rb_define_method(cConnection, "jid", t_xmpp_conn_get_jid,0);
     rb_define_method(cConnection, "jid=", t_xmpp_conn_set_jid,1);
     rb_define_method(cConnection, "password", t_xmpp_conn_get_pass,0);
