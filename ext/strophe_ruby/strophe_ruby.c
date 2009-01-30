@@ -501,6 +501,19 @@ static VALUE t_xmpp_stanza_set_ns(VALUE self, VALUE rb_ns) {
     return Qtrue;
 }
 
+static VALUE t_xmpp_stanza_to_text(VALUE self) {
+    xmpp_stanza_t *stanza;    
+    Data_Get_Struct(self, xmpp_stanza_t, stanza);
+    
+    char* buffer;
+    size_t len;
+    xmpp_stanza_to_text(stanza, &buffer, &len);
+    if (NULL == buffer)
+      return rb_str_new(0, 0);
+    else
+      return rb_str_buf_new2(buffer);
+}
+
 /*Set the text of a stanza */
 static VALUE t_xmpp_stanza_set_text(VALUE self, VALUE rb_text) {
     xmpp_stanza_t *stanza;    
@@ -654,7 +667,7 @@ void Init_strophe_ruby() {
     rb_define_method(cStanza, "name", t_xmpp_stanza_get_name, 0);
     rb_define_method(cStanza, "add_child", t_xmpp_stanza_add_child, 1);
     rb_define_method(cStanza, "ns=", t_xmpp_stanza_set_ns, 1);
-    //rb_define_method(cStanza, "to_s", t_xmpp_stanza_to_text, 0)
+    rb_define_method(cStanza, "to_s", t_xmpp_stanza_to_text, 0);
     rb_define_method(cStanza, "set_attribute", t_xmpp_stanza_set_attribute, 2);    
     rb_define_method(cStanza, "name=", t_xmpp_stanza_set_name, 1);
     rb_define_method(cStanza, "text=", t_xmpp_stanza_set_text, 1);
