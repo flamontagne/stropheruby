@@ -194,8 +194,8 @@ static void _conn_handler(xmpp_conn_t * const conn, const xmpp_conn_event_t stat
 	    rb_funcall(client_conn_handler, rb_intern("call"), 1, INT2FIX(status));
 	    
     } else {    	
-	xmpp_info(conn->ctx, "xmpp", "Disconnected");
-	xmpp_stop(conn->ctx);
+	    xmpp_info(conn->ctx, "xmpp", "Disconnected");
+	    xmpp_stop(conn->ctx);
     }    
 }
 
