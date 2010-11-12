@@ -7,10 +7,9 @@ http://stropheruby.rubyforge.org
 Ruby bindings for Strophe 'http://code.stanziq.com/strophe/', a C library for 
 writing XMPP clients. If all you need is a simple XMPP bot that
 react to message and presence notifications, you might be better off
-with XMPPBot, which is an implementation I wrote on top of StropheRuby.
+with XMPPBot 'http://github.com/flamontagne/xmppbot/', which is an implementation I wrote on top of StropheRuby.
 
-This gem is quite experimental currently... it is not ready 
-for production.
+Note that this gem is quite experimental and is not ready for production.
 
 Strophe 'http://code.stanziq.com/strophe/' is a robust and well written 
 C library that allows the developer to implement XMPP clients.
